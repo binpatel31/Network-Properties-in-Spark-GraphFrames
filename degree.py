@@ -12,21 +12,19 @@ sqlContext = SQLContext(sc)
 ''' return the simple closure of the graph as a graphframe.'''
 def simple(g):
 	# Extract edges and make a data frame of "flipped" edges
-	# YOUR CODE HERE
+	# YOUR CODE HERE	
+	flipped_edges = g.edges.select(g.edges['dst'],g.edges['src'])
+	edges = g.edges.unionAll(flipped_edges).distinct().filter('src != dst') 
+	g = GraphFrame(g.vertices, edges)
+	return g
 
-	# Combine old and new edges. Distinctify to eliminate multi-edges
-	# Filter to eliminate self-loops.
-	# A multigraph with loops will be closured to a simple graph
-	# If we try to undirect an undirected graph, no harm done
-	# YOUR CODE HERE
-
-
-''' Return a data frame of the degree distribution of each edge in
-	the provided graphframe '''
+''' Return a data frame of the degree distribution of each edge in the provided graphframe '''
 def degreedist(g):
 	# Generate a DF with degree,count
-    # YOUR CODE HERE
-
+	# YOUR CODE HERE
+	degree = g.inDegrees.groupBy('inDegree').count()
+        degree = degree.orderBy('inDegree')
+	return degree
 
 ''' Read in an edgelist file with lines of the format id1<delim>id2
 	and return a corresponding graphframe. If "large" we assume
@@ -45,14 +43,19 @@ def readFile(filename, large, sqlContext=sqlContext):
 	# Extract pairs from input file and convert to data frame matching
 	# schema for graphframe edges.
 	# YOUR CODE HERE
-
+        ###################======= if delim==" " then below else other one
+	nodes_graph_pairs = lines.map(lambda line: line.split(delim)) 
+	#making dataframe
+	connected_edges = sqlContext.createDataFrame(nodes_graph_pairs,['src','dst']) ####### can also use src and dst
+        
 	# Extract all endpoints from input file (hence flatmap) and create
 	# data frame containing all those node names in schema matching
 	# graphframe vertices
 	# YOUR CODE HERE
-
+	vertices = connected_edges.selectExpr("src as id").unionAll(connected_edges.selectExpr("dst as id")).distinct()
+	#	vertices.pprint()
 	# Create graphframe g from the vertices and edges.
-
+	g = GraphFrame(vertices,connected_edges)
 	return g
 
 
